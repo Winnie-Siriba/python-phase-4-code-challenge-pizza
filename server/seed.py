@@ -1,41 +1,80 @@
 #!/usr/bin/env python3
 
+from random import randint, choice as rc
+from faker import Faker
 from app import app
 from models import db, Restaurant, Pizza, RestaurantPizza
 
+fake = Faker()
+
 with app.app_context():
-
-    # This will delete any existing rows
-    # so you can run the seed file multiple times without having duplicate entries in your database
-    print("Deleting data...")
-    Pizza.query.delete()
-    Restaurant.query.delete()
+    print("Starting seed...")
+    
+    # Clear existing data
     RestaurantPizza.query.delete()
-
-    print("Creating restaurants...")
-    shack = Restaurant(name="Karen's Pizza Shack", address='address1')
-    bistro = Restaurant(name="Sanjay's Pizza", address='address2')
-    palace = Restaurant(name="Kiki's Pizza", address='address3')
-    restaurants = [shack, bistro, palace]
-
-    print("Creating pizzas...")
-
-    cheese = Pizza(name="Emma", ingredients="Dough, Tomato Sauce, Cheese")
-    pepperoni = Pizza(
-        name="Geri", ingredients="Dough, Tomato Sauce, Cheese, Pepperoni")
-    california = Pizza(
-        name="Melanie", ingredients="Dough, Sauce, Ricotta, Red peppers, Mustard")
-    pizzas = [cheese, pepperoni, california]
-
-    print("Creating RestaurantPizza...")
-
-    pr1 = RestaurantPizza(restaurant=shack, pizza=cheese, price=1)
-    pr2 = RestaurantPizza(restaurant=bistro, pizza=pepperoni, price=4)
-    pr3 = RestaurantPizza(restaurant=palace, pizza=california, price=5)
-    restaurantPizzas = [pr1, pr2, pr3]
+    Restaurant.query.delete()
+    Pizza.query.delete()
+    
+    # Create restaurants
+    restaurants = []
+    restaurant_names = [
+        "Karen's Pizza Shack",
+        "Sanjay's Pizza",
+        "Kiki's Pizza",
+        "Gino's Italian",
+        "Mario's Pizzeria"
+    ]
+    
+    for name in restaurant_names:
+        restaurant = Restaurant(
+            name=name,
+            address=fake.address()
+        )
+        restaurants.append(restaurant)
+    
     db.session.add_all(restaurants)
+    
+    # Create pizzas
+    pizzas = []
+    pizza_data = [
+        ("Emma", "Dough, Tomato Sauce, Cheese"),
+        ("Geri", "Dough, Tomato Sauce, Cheese, Pepperoni"),
+        ("Melanie", "Dough, Sauce, Ricotta, Red peppers, Mustard"),
+        ("Margherita", "Dough, Tomato Sauce, Mozzarella, Basil"),
+        ("Hawaiian", "Dough, Tomato Sauce, Cheese, Ham, Pineapple"),
+        ("Meat Lovers", "Dough, Tomato Sauce, Cheese, Pepperoni, Sausage, Ham"),
+        ("Veggie Supreme", "Dough, Tomato Sauce, Cheese, Peppers, Mushrooms, Onions")
+    ]
+    
+    for name, ingredients in pizza_data:
+        pizza = Pizza(
+            name=name,
+            ingredients=ingredients
+        )
+        pizzas.append(pizza)
+    
     db.session.add_all(pizzas)
-    db.session.add_all(restaurantPizzas)
     db.session.commit()
-
-    print("Seeding done!")
+    
+    # Create restaurant pizzas (associations)
+    restaurant_pizzas = []
+    for restaurant in restaurants:
+        # Each restaurant will have 2-4 pizzas
+        num_pizzas = randint(2, 4)
+        selected_pizzas = fake.random_elements(elements=pizzas, length=num_pizzas, unique=True)
+        
+        for pizza in selected_pizzas:
+            restaurant_pizza = RestaurantPizza(
+                price=randint(1, 30),
+                restaurant_id=restaurant.id,
+                pizza_id=pizza.id
+            )
+            restaurant_pizzas.append(restaurant_pizza)
+    
+    db.session.add_all(restaurant_pizzas)
+    db.session.commit()
+    
+    print(f"Seeded {len(restaurants)} restaurants")
+    print(f"Seeded {len(pizzas)} pizzas")
+    print(f"Seeded {len(restaurant_pizzas)} restaurant-pizza associations")
+    print("Seed completed!")
